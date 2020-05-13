@@ -1,6 +1,215 @@
-<html>
-<header><title>This is title</title></header>
-<body>
-Hello world
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-166543453-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-166543453-1');
+    </script>
+
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <title>Facebook Birthday Export</title>
+  </head>
+  <body>
+<div class="container">
+  <h1>Facebook Birthday Export</h1>
+  <p>Export your Facebook Friends' Birthdays to any Calendar</p>
+
+  <ul class="nav nav-tabs" id="myTab" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab" aria-controls="home"
+        aria-selected="true">Home</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" id="profile-tab" data-toggle="tab" href="#profile" role="tab" aria-controls="profile"
+        aria-selected="false">FAQ</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" id="contact-tab" data-toggle="tab" href="#contact" role="tab" aria-controls="contact"
+        aria-selected="false">Contact</a>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="myTabContent">
+    <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+      <p></p>
+      Follow these simple steps on your PC
+      <p></p>
+      <ol>
+        <li>Download the facebook birthday page
+            <ul>
+              <li>Visit: <a target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/events/birthdays/">https://www.facebook.com/events/birthdays/</a></li>
+              <li>Facebook just introduced a new design: Select the classic design in the settings on the top right</li>
+              <li>Scroll down the page to load the full content</li>
+              <li>Press Ctrl+S to store the page as html file</li>
+            </ul>
+        </li>
+        <p></p>
+        <li>Upload the html file
+          <div><label class="btn btn-primary">
+            Browse&hellip; <input type="file" id="file_input" style="display: none;">
+          </label></div>
+          <div class="alert alert-success" id="success_log" hidden=true role="alert">
+          </div>
+          <div class="alert alert-danger" id="error_log" hidden=true role="alert">
+          </div>
+        </li>
+        <p></p>
+        <li>Download the generated iCalendar file
+          <div><a href="data:application/xml;charset=utf-8," download="facebook_birthdays.ics" id="download_button" class="btn btn-primary disabled">Download </a></div>
+        </li>
+        <p></p>
+        <li>Import the iCalendar file into your favorite calendar</li>
+          <ul>
+            <li>Check the documentation of your calendar how to do this</li>
+            <li>Description for <a target="_blank" rel="noopener noreferrer" href="https://support.google.com/calendar/answer/37118?co=GENIE.Platform%3DDesktop&hl=en&oco=0">Google Calendar</a></li>
+            <!-- <li>Hint: It may be a good idea to create a <a target="_blank" rel="noopener noreferrer" href="https://support.google.com/calendar/answer/37118?co=GENIE.Platform%3DDesktop&hl=en&oco=0">new calendar</a> to import the facebook birthdays</li> -->
+          </ul>
+      </ol>
+    </div>
+    <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+      <p></p>
+      <b>Is any of my data stored on the server?</b>
+      <div>No. In fact everything is executed locally in your webbrowser. No data is transferred to the server at all.</div>
+      <p></p>
+      <b>How can i update the birthday calendar?</b>
+      <div>Whenever you have new contacts you can simply redo these steps. Every birthday event has a unique ID. Means existing events in your calendar will not be duplicated when reimporting them again.</div>
+      <p></p>
+      <b>Will there be more information here?</b>
+      <div>Yes. This FAQ will be extended.</div>      
+    </div>
+    <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab">
+      <p></p>
+      Please visit the github project of this site for any questions or remarks.
+    </div>
+  </div>  
+
+</div>
+
+<script>
+  var fileinput = document.getElementById("file_input");
+  fileinput.addEventListener('change', function() {
+
+    var file = fileinput.files[0];
+
+    var reader = new FileReader();
+
+    reader.onload = function() {
+
+      document.getElementById("success_log").hidden= true;
+      document.getElementById("error_log").hidden= true;
+      document.getElementById("download_button").setAttribute('class', "btn btn-primary disabled");
+
+      var parser = new DOMParser();
+      var parsedHtml = parser.parseFromString(reader.result, 'text/html');
+
+      var bd_elements = parsedHtml.getElementsByClassName('_43q7');
+      var ics_file="BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:[FacebookEventExport]\n";
+      var bd_counter=0;
+      var date_parse_error_log="";
+      for(i=0; i<bd_elements.length; i++){
+        var tooltip_str = bd_elements[i].getElementsByClassName("link")[0].getAttribute('data-tooltip-content');
+        var regex = /(.*\()(.*\))/g;
+        var match = regex.exec(tooltip_str);
+        var name = match[1];
+        name = name.slice(0, -2);//remove ' ('
+        var date = match[2];
+        date = date.slice(0, -1);//remove ')'
+
+        var month;
+        var day;
+
+        // German date format
+        if(date.search('\\.') != -1){
+          //format is (14.5.)
+          regex = /(.*)\.(.*)\./g;
+          match = regex.exec(date);
+          day = match[1];
+          month = match[2];
+        }
+        // English date format
+        else if (date.search('\/') != -1){
+          //format is (5/14)
+          regex = /(.*)\/(.*)/g;
+          match = regex.exec(date);
+          day = match[2];
+          month = match[1];
+        }
+        // Other date format
+        else{
+          date_parse_error_log += name + " (" + date + ")\n";
+          console.log("Date parsing error: " + name + " (" + date + ")");
+          continue;
+        }
+
+        //prepend 0 for single digits according to ical spec
+        if(day.length==1){
+          day = '0'+day;
+        }
+        if(month.length==1){
+          month = '0'+month;
+        }
+
+        var uid = name.replace(/[^a-zA-Z0-9]/g, "") + month + day; //Generate a UID out of name and birthday date
+
+        //the current birthdays repeat at the end of the file again --> skip duplicates
+        if(ics_file.search(uid) == -1)
+        {
+          var year = new Date().getFullYear();
+
+          ics_file += "BEGIN:VEVENT\n";
+          ics_file += "UID:" + uid + "\n";
+          ics_file += "DTSTAMP:20200101T120000Z\n"; // for simplicity, use fake date as creation date
+          ics_file += "DTSTART;VALUE=DATE:" + year + month + day + "\n";
+          ics_file += "RRULE:FREQ=YEARLY\n";
+          ics_file += "SUMMARY:" + name + "'s Birthday\n";
+          ics_file +=	"DESCRIPTION:This birthday event has been exported from facebook.\n";
+          ics_file += "END:VEVENT\n";
+
+          bd_counter++;
+        }
+      }
+
+      ics_file += "END:VCALENDAR";
+
+      if(bd_counter > 0){
+        document.getElementById("download_button").setAttribute('href', "data:application/xml;charset=utf-8," + ics_file);
+        document.getElementById("download_button").setAttribute('class', "btn btn-primary");
+
+        document.getElementById("success_log").innerText = bd_counter + " birthdays exported"
+        document.getElementById("success_log").hidden= false;
+      }
+      else{
+        document.getElementById("error_log").innerText = "Error: No birthdays found"
+        document.getElementById("error_log").hidden= false;
+      }
+
+      if(date_parse_error_log != "")
+      {
+        document.getElementById("error_log").innerHTML = "<div>Error in parsing following birthdays:</div><div>" + date_parse_error_log + "</div><p></p><div><small>This is because birthdays in the upcoming week are not represented as dates, but as language specific weekdays. This will be fixed in the future.<div></div>The easiest is to import the calendar file now and reexecute these steps in one week to fetch the missed birthdays.</small></div>"
+        document.getElementById("error_log").hidden= false;
+      }
+      
+    };
+
+    reader.readAsText(file);    
+  });
+</script>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+  </body>
 </html>
